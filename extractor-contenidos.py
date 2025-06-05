@@ -28,7 +28,7 @@ def add_styled_run(paragraph_or_heading, bs_node):
                 try:
                     paragraph_or_heading.add_hyperlink(text, href, is_external=True)
                 except Exception as e:
-                    st.warning(f"Advertencia: No se pudo crear el hipervínculo para '{text}': {e}")
+                    #st.warning(f"Advertencia: No se pudo crear el hipervínculo para '{text}': {e}") #Silenciamos este warning
                     run = paragraph_or_heading.add_run(text + f" [{href}]")
                     run.font.color.rgb = RGBColor(0x05, 0x63, 0xC1)
                     run.font.underline = True
