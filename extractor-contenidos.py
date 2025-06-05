@@ -93,7 +93,7 @@ def html_to_docx_elements(bs_element, document_or_container):
 
 # --- Aplicación Streamlit ---
 st.set_page_config(page_title="HTML a Word", layout="wide") # layout="centered" o "wide"
-st.title("📄 Extractor de Contenido HTML a Documento Word")
+st.title("📄 Extractor de Contenido HTML a Word")
 st.markdown("""
 Esta aplicación te permite extraer el contenido de un elemento HTML específico (identificado por su ID)
 de una página web y guardarlo como un documento de Word (.docx), conservando parte de la estructura
