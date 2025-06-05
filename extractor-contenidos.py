@@ -195,5 +195,3 @@ if submitted: # La lógica de procesamiento sigue igual
             st.error(f"Ocurrió un error inesperado durante el proceso.")
             st.exception(e)
 
-st.sidebar.markdown("---")
-st.sidebar.info("Creado con Streamlit y python-docx.")
