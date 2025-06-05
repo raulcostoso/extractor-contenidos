@@ -114,12 +114,12 @@ with st.form(key="extraction_form"):
 
     # Los campos de texto ahora reaccionarán al radio button
     if selection_method == 'ID':
-        target_identifier_value = st.text_input("🆔 ID del div a extraer (ej: `main-description`):", "ID", key="target_id_input")
+        target_identifier_value = st.text_input("🆔 ID del div a extraer (ej: `main-description`):", "main-description", key="target_id_input")
         target_identifier_type = "ID"
     elif selection_method == 'Clase(s) CSS':
         target_identifier_value = st.text_input(
-            "🏷️ Clase(s) del div a extraer (ej: `content main` o `mi-clase-unica`):",
-            "Class",
+            "🏷️ Clase(s) del div a extraer (ej: `container description`):",
+            "container description",
             key="target_class_input"
         )
         st.caption("Si son múltiples clases, sepáralas por espacio. No incluyas el punto `.` inicial.")
