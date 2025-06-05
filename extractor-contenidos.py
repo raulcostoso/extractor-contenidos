@@ -4,10 +4,10 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.style import WD_STYLE_TYPE # Corregido
-from io import BytesIO # Para manejar el archivo en memoria
+from docx.enum.style import WD_STYLE_TYPE
+from io import BytesIO
 
-# --- Funciones de conversión HTML a DOCX (las mismas que antes) ---
+# --- Funciones de conversión HTML a DOCX (sin cambios, las mismas que antes) ---
 def add_styled_run(paragraph_or_heading, bs_node):
     if isinstance(bs_node, NavigableString):
         text = str(bs_node)
@@ -15,7 +15,7 @@ def add_styled_run(paragraph_or_heading, bs_node):
             paragraph_or_heading.add_run(text)
     elif isinstance(bs_node, Tag):
         text = bs_node.get_text(strip=True)
-        if not text and bs_node.name != 'br': # Permitir <br> aunque esté "vacío" de texto
+        if not text and bs_node.name != 'br':
             return
 
         if bs_node.name in ['strong', 'b']:
@@ -28,7 +28,6 @@ def add_styled_run(paragraph_or_heading, bs_node):
             href = bs_node.get('href')
             if href:
                 try:
-                    # add_hyperlink es un método del objeto Paragraph/Heading
                     paragraph_or_heading.add_hyperlink(text, href, is_external=True)
                 except Exception as e:
                     st.warning(f"Advertencia: No se pudo crear el hipervínculo para '{text}': {e}")
@@ -87,14 +86,13 @@ def html_to_docx_elements(bs_element, document_or_container):
         for child in bs_element.children:
             html_to_docx_elements(child, document_or_container)
     elif tag_name == 'style':
-        # st.info("Nota: Las etiquetas <style> y su contenido se omitirán.") # Opcional: informar al usuario
         pass
     else:
         for child in bs_element.children:
             html_to_docx_elements(child, document_or_container)
 
 # --- Aplicación Streamlit ---
-st.set_page_config(page_title="HTML a Word", layout="wide")
+st.set_page_config(page_title="HTML a Word", layout="wide") # layout="centered" o "wide"
 st.title("📄 Extractor de Contenido HTML a Documento Word")
 st.markdown("""
 Esta aplicación te permite extraer el contenido de un elemento HTML específico (identificado por su ID)
@@ -102,11 +100,19 @@ de una página web y guardarlo como un documento de Word (.docx), conservando pa
 (encabezados, párrafos, listas, negritas, cursivas y enlaces).
 """)
 
-st.sidebar.header("Configuración de Extracción")
-url = st.sidebar.text_input("🔗 URL de la página:", "https://www.unir.net/educacion/master-secundaria/")
-div_id = st.sidebar.text_input("🆔 ID del div a extraer:", "main-description")
+st.markdown("---") # Separador visual
 
-if st.sidebar.button("🚀 Extraer y Convertir"):
+# Sección de Configuración en el área central usando st.form
+st.subheader("⚙️ Configuración de Extracción")
+with st.form(key="extraction_form"):
+    url = st.text_input("🔗 URL de la página:", "https://www.unir.net/educacion/master-secundaria/")
+    div_id = st.text_input("🆔 ID del div a extraer:", "main-description")
+    
+    # Botón de envío para el formulario
+    submitted = st.form_submit_button("🚀 Extraer y Convertir")
+
+# La lógica de procesamiento ahora se activa solo cuando el formulario es enviado
+if submitted:
     if not url:
         st.error("Por favor, introduce una URL.")
     elif not div_id:
@@ -125,35 +131,24 @@ if st.sidebar.button("🚀 Extraer y Convertir"):
             if main_content_div:
                 st.success(f"Div con id='{div_id}' encontrado.")
 
-                # Opcional: Mostrar un preview del HTML extraído
-                # with st.expander("Ver HTML extraído (raw)"):
-                #     st.code(main_content_div.prettify(), language='html')
-
                 with st.spinner("Convirtiendo HTML a DOCX..."):
                     document = Document()
-                    # Añadir metadatos al documento
                     document.core_properties.title = f"Contenido de {div_id} de {url}"
                     document.core_properties.author = "Extractor HTML Streamlit App"
                     
-                    #document.add_heading('Contenido Extraído de la Web', level=0)
-                    #p_info = document.add_paragraph()
-                    #p_info.add_run("URL: ").bold = True
-                    #p_info.add_run(url + "\n")
-                    #p_info.add_run("ID del Div: ").bold = True
-                    #p_info.add_run(div_id)
-                    #document.add_page_break()
+                    # Ya no se añade la portada
+                    # document.add_heading('Contenido Extraído de la Web', level=0)
+                    # ... (código de portada eliminado) ...
 
                     for element in main_content_div.children:
                         html_to_docx_elements(element, document)
 
-                # Guardar el documento en un buffer de BytesIO para descarga
                 doc_io = BytesIO()
                 document.save(doc_io)
-                doc_io.seek(0) # Volver al inicio del buffer
+                doc_io.seek(0)
 
                 st.success("¡Conversión a Word completada!")
 
-                # Limpiar nombre de archivo
                 clean_url_for_filename = url.split('//')[-1].split('/')[0].replace('.', '_')
                 output_filename = f"contenido_{clean_url_for_filename}_{div_id}.docx"
 
@@ -171,7 +166,8 @@ if st.sidebar.button("🚀 Extraer y Convertir"):
             st.error(f"Error de red al intentar acceder a la URL: {e}")
         except Exception as e:
             st.error(f"Ocurrió un error inesperado: {e}")
-            st.exception(e) # Muestra el traceback completo para depuración
+            st.exception(e)
 
+# Información en la sidebar (opcional, puedes moverla o eliminarla)
 st.sidebar.markdown("---")
 st.sidebar.info("Creado con Streamlit y python-docx.")
