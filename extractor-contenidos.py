@@ -135,13 +135,13 @@ if st.sidebar.button("🚀 Extraer y Convertir"):
                     document.core_properties.title = f"Contenido de {div_id} de {url}"
                     document.core_properties.author = "Extractor HTML Streamlit App"
                     
-                    document.add_heading('Contenido Extraído de la Web', level=0)
-                    p_info = document.add_paragraph()
-                    p_info.add_run("URL: ").bold = True
-                    p_info.add_run(url + "\n")
-                    p_info.add_run("ID del Div: ").bold = True
-                    p_info.add_run(div_id)
-                    document.add_page_break()
+                    #document.add_heading('Contenido Extraído de la Web', level=0)
+                    #p_info = document.add_paragraph()
+                    #p_info.add_run("URL: ").bold = True
+                    #p_info.add_run(url + "\n")
+                    #p_info.add_run("ID del Div: ").bold = True
+                    #p_info.add_run(div_id)
+                    #document.add_page_break()
 
                     for element in main_content_div.children:
                         html_to_docx_elements(element, document)
