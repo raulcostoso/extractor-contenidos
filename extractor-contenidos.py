@@ -2,9 +2,9 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
 from docx import Document
-from docx.shared import Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.style import WD_STYLE_TYPE
+from docx.shared import Pt, RGBColor # Importaciones que ya tenías
+# from docx.enum.text import WD_ALIGN_PARAGRAPH # No se usa activamente, podrías quitarla
+# from docx.enum.style import WD_STYLE_TYPE    # No se usa activamente, podrías quitarla
 from io import BytesIO
 
 # --- Funciones de conversión HTML a DOCX (sin cambios, las mismas que antes) ---
@@ -92,31 +92,49 @@ def html_to_docx_elements(bs_element, document_or_container):
             html_to_docx_elements(child, document_or_container)
 
 # --- Aplicación Streamlit ---
-st.set_page_config(page_title="HTML a Word", layout="wide") # layout="centered" o "wide"
-st.title("📄 Extractor de Contenido HTML a Word")
+st.set_page_config(page_title="HTML a Word", layout="wide")
+st.title("📄 Extractor de Contenido HTML a Documento Word")
 st.markdown("""
-Esta aplicación te permite extraer el contenido de un elemento HTML específico (identificado por su ID)
-de una página web y guardarlo como un documento de Word (.docx), conservando parte de la estructura
-(encabezados, párrafos, listas, negritas, cursivas y enlaces).
+Esta aplicación te permite extraer el contenido de un elemento HTML específico
+de una página web y guardarlo como un documento de Word (.docx).
+Puedes especificar el elemento por su ID o por su(s) clase(s).
 """)
 
-st.markdown("---") # Separador visual
+st.markdown("---")
 
-# Sección de Configuración en el área central usando st.form
 st.subheader("⚙️ Configuración de Extracción")
 with st.form(key="extraction_form"):
     url = st.text_input("🔗 URL de la página:", "https://www.unir.net/educacion/master-secundaria/")
-    div_id = st.text_input("🆔 ID del div a extraer:", "main-description")
-    
-    # Botón de envío para el formulario
+
+    selection_method = st.radio(
+        "Método de selección del elemento:",
+        ('ID', 'Clase(s) CSS'),
+        horizontal=True # Para que los radio buttons estén en una línea
+    )
+
+    target_identifier_value = "" # Variable para almacenar el valor del ID o la Clase
+    target_identifier_type = "" # Para saber si es 'ID' o 'Clase' para mensajes y lógica
+
+    if selection_method == 'ID':
+        target_id = st.text_input("🆔 ID del div a extraer:", "main-description")
+        target_identifier_value = target_id
+        target_identifier_type = "ID"
+    elif selection_method == 'Clase(s) CSS':
+        target_class = st.text_input(
+            "🏷️ Clase(s) del div a extraer (ej: `content main` o `mi-clase-unica`):",
+            "list--icons list--numbers list--square list--links magento -margin-bottom--element" # Ejemplo del div que antes era 'main-description'
+        )
+        st.caption("Si son múltiples clases, sepáralas por espacio. No incluyas el punto `.` inicial.")
+        target_identifier_value = target_class
+        target_identifier_type = "Clase(s)"
+
     submitted = st.form_submit_button("🚀 Extraer y Convertir")
 
-# La lógica de procesamiento ahora se activa solo cuando el formulario es enviado
 if submitted:
     if not url:
         st.error("Por favor, introduce una URL.")
-    elif not div_id:
-        st.error("Por favor, introduce el ID del div.")
+    elif not target_identifier_value:
+        st.error(f"Por favor, introduce un valor para {target_identifier_type}.")
     else:
         try:
             with st.spinner(f"Descargando contenido de {url}..."):
@@ -126,19 +144,26 @@ if submitted:
 
             with st.spinner("Parseando HTML..."):
                 soup = BeautifulSoup(response.text, 'html.parser')
-                main_content_div = soup.find('div', id=div_id)
+                main_content_div = None
+
+                if selection_method == 'ID':
+                    main_content_div = soup.find('div', id=target_identifier_value.strip())
+                    search_criteria_display = f"ID='{target_identifier_value.strip()}'"
+                elif selection_method == 'Clase(s) CSS':
+                    # BeautifulSoup espera una lista de clases si se pasan múltiples,
+                    # o una cadena con espacios si se usa `class_`
+                    # Limpiamos el input por si acaso
+                    class_value = target_identifier_value.strip()
+                    main_content_div = soup.find('div', class_=class_value)
+                    search_criteria_display = f"Clase(s)='{class_value}'"
 
             if main_content_div:
-                st.success(f"Div con id='{div_id}' encontrado.")
+                st.success(f"Div con {search_criteria_display} encontrado.")
 
                 with st.spinner("Convirtiendo HTML a DOCX..."):
                     document = Document()
-                    document.core_properties.title = f"Contenido de {div_id} de {url}"
+                    document.core_properties.title = f"Contenido de {search_criteria_display} de {url}"
                     document.core_properties.author = "Extractor HTML Streamlit App"
-                    
-                    # Ya no se añade la portada
-                    # document.add_heading('Contenido Extraído de la Web', level=0)
-                    # ... (código de portada eliminado) ...
 
                     for element in main_content_div.children:
                         html_to_docx_elements(element, document)
@@ -150,7 +175,10 @@ if submitted:
                 st.success("¡Conversión a Word completada!")
 
                 clean_url_for_filename = url.split('//')[-1].split('/')[0].replace('.', '_')
-                output_filename = f"contenido_{clean_url_for_filename}_{div_id}.docx"
+                # Limpiar el identificador para el nombre del archivo
+                clean_identifier = "".join(c if c.isalnum() else "_" for c in target_identifier_value.strip())[:30]
+
+                output_filename = f"contenido_{clean_url_for_filename}_{clean_identifier}.docx"
 
                 st.download_button(
                     label="📥 Descargar Documento Word (.docx)",
@@ -159,15 +187,14 @@ if submitted:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
             else:
-                st.error(f"No se encontró el div con id='{div_id}' en la página.")
-                st.info("Verifica la URL y el ID. Puedes inspeccionar el código fuente de la página (Ctrl+U o Cmd+Opt+U) para encontrar el ID correcto.")
+                st.error(f"No se encontró ningún div con {search_criteria_display} en la página.")
+                st.info("Verifica la URL y el identificador. Puedes inspeccionar el código fuente de la página (Ctrl+U o Cmd+Opt+U) para encontrar los valores correctos.")
 
         except requests.exceptions.RequestException as e:
             st.error(f"Error de red al intentar acceder a la URL: {e}")
         except Exception as e:
-            st.error(f"Ocurrió un error inesperado: {e}")
-            st.exception(e)
+            st.error(f"Ocurrió un error inesperado durante el proceso.")
+            st.exception(e) # Muestra el traceback completo para depuración
 
-# Información en la sidebar (opcional, puedes moverla o eliminarla)
 st.sidebar.markdown("---")
 st.sidebar.info("Creado con Streamlit y python-docx.")
